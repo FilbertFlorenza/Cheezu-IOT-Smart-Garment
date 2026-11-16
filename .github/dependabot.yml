@@ -20,6 +20,9 @@ updates:
         patterns:
           - "vite"
           - "laravel-vite-plugin"
+    ignore:
+      - dependency-name: "tailwindcss"
+        versions: [">=4.0.0"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
