@@ -79,7 +79,7 @@ docker compose --env-file .env.docker \
 
 ## CI (`.github/workflows/ci.yml`)
 
-Triggers: pushes to `main`, all pull requests, manual dispatch. Concurrency cancels superseded runs.
+Triggers: pushes to `master` and `main`, all pull requests, manual dispatch. Concurrency cancels superseded runs.
 
 ### `backend` job
 

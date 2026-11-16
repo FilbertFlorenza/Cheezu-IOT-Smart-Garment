@@ -1,5 +1,7 @@
 # Smart Garment Defect Detection — Monitoring Backend
 
+[![CI](https://github.com/FilbertFlorenza/cheezu-iot-smart-garment-web/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/FilbertFlorenza/cheezu-iot-smart-garment-web/actions/workflows/ci.yml)
+
 Laravel 12 application and REST API that stores and visualises fabric inspection
 results from ESP32-CAM inspection units and resource forecasts produced by
 external machine-learning services. It is the monitoring and reporting tier: it
@@ -101,9 +103,12 @@ The plain token is printed once; only a hash is stored. See
 
 ```bash
 cp .env.docker.example .env.docker
-# Replace every change-me value in .env.docker.
+# Replace every change-me value, then set APP_KEY:
+#   php artisan key:generate --show   ->  APP_KEY=base64:...
 docker compose --env-file .env.docker up --build
 ```
+
+`APP_KEY` is required: the image has no `.env` file, so the container cannot generate one.
 
 Open <http://localhost:8080>. The stack starts the application and MySQL,
 runs migrations, seeds accounts, and warms Laravel's caches. After the first
@@ -130,6 +135,10 @@ php artisan view:cache     # Compile every Blade template
 
 The test suite uses a separate MySQL database (`garment_defect_test`) configured
 in `phpunit.xml`.
+
+CI (`.github/workflows/ci.yml`) runs the same checks on every push to `master`
+and every pull request, then builds the production image and boots it against
+MySQL. The badge at the top of this file links to the latest runs.
 
 ## Documentation
 

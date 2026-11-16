@@ -135,7 +135,7 @@ the ECS/Secrets Manager wiring.
 
 | Variable | Local default | Why it matters if wrong |
 | --- | --- | --- |
-| `APP_KEY` | empty | Encryption, sessions, and signed URLs break. Regenerating logs everyone out. |
+| `APP_KEY` | empty | Encryption, sessions, and signed URLs break. Regenerating logs everyone out. Required in the container: the image has no `.env`, so it cannot generate one at startup. |
 | `APP_URL` | `http://localhost:8000` | Signed image URLs are generated from it; a mismatch produces links that fail signature validation. Must include scheme and host. |
 | `DB_CONNECTION` | `mysql` | Only `mysql` is exercised by the codebase and tests. |
 | `DB_HOST` | `127.0.0.1` | |

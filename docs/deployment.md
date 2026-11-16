@@ -63,7 +63,9 @@ the target group health check expects.
 `docker/entrypoint.sh` runs before Supervisor, in this order:
 
 1. create writable directories and fix ownership;
-2. refuse to start in production without `APP_KEY`;
+2. check `APP_KEY`: production aborts without it, and the local fallback (`php artisan key:generate`)
+   cannot work inside the image because there is no `.env` file to write — treat `APP_KEY` as
+   required in every environment;
 3. optionally wait for MySQL (`WAIT_FOR_DB`);
 4. optionally run migrations (`RUN_MIGRATIONS`);
 5. optionally seed (`RUN_SEED`);
@@ -83,10 +85,12 @@ cp .env.docker.example .env.docker
 ```
 
 Open `.env.docker` and replace **every** `change-me` value. Compose refuses to start without
-`DB_PASSWORD`, `DB_ROOT_PASSWORD`, `ADMIN_PASSWORD`, and `OPERATOR_PASSWORD`, because they are declared
-with `:?` (required) substitutions.
+`DB_PASSWORD`, `DB_ROOT_PASSWORD`, `ADMIN_PASSWORD`, `OPERATOR_PASSWORD`, and `APP_KEY`, because they
+are declared with `:?` (required) substitutions.
 
-Set a stable `APP_KEY` rather than letting the container generate an ephemeral one:
+Set `APP_KEY` explicitly. The image has no `.env` file, so the entrypoint cannot generate one: with an
+empty key under `APP_ENV=local` it attempts `php artisan key:generate`, fails, and the container
+restarts in a loop.
 
 ```bash
 php artisan key:generate --show
@@ -103,12 +107,17 @@ docker compose --env-file .env.docker up --build
 | Service | Role |
 | --- | --- |
 | `app` | The application image, published on `${APP_PORT:-8080}` |
-| `db` | MySQL 8.4 with a persistent `db-data` volume |
+| `db` | MySQL 8.4.11 with a persistent `db-data` volume |
 | `minio` | Optional S3-compatible storage, only with the overlay |
 | `minio-init` | Creates the private bucket once MinIO is healthy |
 
 **Checkpoint:** `docker compose ps` shows `app` and `db` healthy, and <http://localhost:8080> shows the
-login page. Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env.docker`.
+login page. Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env.docker`. `GET /up` returns `200`
+and `GET /api/v1/health` reports `"database":"ok"`.
+
+The Compose file pins the database to `mysql:8.4.11`. Change that tag deliberately: a floating `8.4`
+tag re-resolves on every pull, and a partially written image layer will fail with
+`error while loading shared libraries`.
 
 ### 3. Turn seeding off after the first start
 
@@ -427,6 +436,8 @@ docker image inspect garment-defect:local --format '{{.Config.ExposedPorts}}'
 | `docker ps` fails with a named-pipe error | Docker Desktop is not running | Start Docker Desktop and wait for the engine |
 | Compose exits: `Set DB_PASSWORD in .env.docker` | Required substitution missing | Replace every `change-me` value in `.env.docker` |
 | Container exits: `APP_KEY is not set` | Production requires an injected key | Add `APP_KEY` to the environment or secret store |
+| Container restart-loops with `file_get_contents(.../.env): Failed to open stream` | `APP_KEY` empty in a local stack; the image has no `.env` to write | Set `APP_KEY` in `.env.docker` (`php artisan key:generate --show`) |
+| `db` exits 127 with `error while loading shared libraries: ... file too short` | Corrupt MySQL image layer on the Docker host | Remove the image and pull a different patch tag (e.g. `mysql:8.4.11`) |
 | Container loops with a database error | RDS unreachable or `WAIT_FOR_DB` off | Check security groups, `DB_HOST`, and set `WAIT_FOR_DB=true` |
 | ALB marks the task unhealthy | `/up` not reachable, or the wrong port | Confirm port 80 and a 200 from `/up` inside the container |
 | Images disappear after a container restart | Local disk without a volume | Mount a volume for `storage/app`, or use S3 |
@@ -443,8 +454,8 @@ Cross-cutting symptoms are indexed in [troubleshooting.md](troubleshooting.md).
 - **No infrastructure-as-code.** The task definition and commands are a runbook, not Terraform or CDK.
 - **AWS was never provisioned from this repository.** The AWS path is `Needs Verification` against a
   live account.
-- **Full Compose runtime verification was blocked** in the authoring environment by disk space. The CI
-  container job exercises the same image, but treat a first local Compose run as `Needs Verification`.
+- **The Compose stack was verified end to end:** image build, MySQL 8.4.11, migrations, seeding,
+  cache warm-up, and healthy `/up` and `/api/v1/health` responses. The AWS path is still unprovisioned.
 - **The Compose stack is single-replica** with MySQL in a container. Use RDS and ECS for production.
 - **No autoscaling policy, WAF, or Redis** is defined here.
 

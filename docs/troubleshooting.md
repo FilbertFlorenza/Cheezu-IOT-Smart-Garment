@@ -176,6 +176,8 @@ covers bucket permissions.
 | `docker ps` fails with a named-pipe error | Docker Desktop is not running | Start Docker Desktop and wait for the engine |
 | Compose exits: `Set DB_PASSWORD in .env.docker` | Required substitution missing | Replace every `change-me` value |
 | Container exits: `APP_KEY is not set` | Production requires an injected key | Provide `APP_KEY` from a secret store |
+| App restart-loops with `file_get_contents(/var/www/html/.env): Failed to open stream` | `APP_KEY` empty in Compose; the image has no `.env` to write | Set `APP_KEY` in `.env.docker` |
+| `db` exits 127 with `libselinux.so.1: file too short` | Corrupted MySQL image layer | Remove the image and pull a different patch tag |
 | Container keeps restarting | Database unreachable, or a failed migration | Set `WAIT_FOR_DB=true`, check security groups, read the logs |
 | ALB marks the task unhealthy | `/up` unreachable, or the wrong port | Confirm a 200 from `/up` on port 80 inside the container |
 | Deploy stalls at `services-stable` | New tasks never become healthy | Inspect the stopped reason and logs; roll back if needed |

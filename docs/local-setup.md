@@ -258,9 +258,13 @@ If Docker Desktop is available, the whole stack — app, MySQL, assets, migratio
 
 ```bash
 cp .env.docker.example .env.docker
-# Replace every change-me value in .env.docker.
+# Replace every change-me value, then set APP_KEY:
+#   php artisan key:generate --show   ->  APP_KEY=base64:...
 docker compose --env-file .env.docker up --build
 ```
+
+`APP_KEY` is required. The image has no `.env` file, so the container cannot generate one; an empty key
+makes the app container restart-loop.
 
 Open <http://localhost:8080>. The first start runs migrations and seeds accounts. After that, set
 `RUN_SEED=false` in `.env.docker` so restarts do not reset the seeded passwords.
