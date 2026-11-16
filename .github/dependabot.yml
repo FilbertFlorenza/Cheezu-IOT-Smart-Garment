@@ -15,6 +15,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      vite-ecosystem:
+        patterns:
+          - "vite"
+          - "laravel-vite-plugin"
 
   - package-ecosystem: "github-actions"
     directory: "/"
