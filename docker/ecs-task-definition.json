@@ -1,0 +1,90 @@
+{
+  "family": "garment-defect",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/garment-defect-execution",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/garment-defect-task",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/garment-defect:<IMAGE_TAG>",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "APP_NAME", "value": "Garment QC" },
+        { "name": "APP_ENV", "value": "production" },
+        { "name": "APP_DEBUG", "value": "false" },
+        { "name": "APP_URL", "value": "https://<DOMAIN>" },
+        { "name": "APP_DISPLAY_TIMEZONE", "value": "Asia/Manila" },
+        { "name": "LOG_CHANNEL", "value": "stderr" },
+        { "name": "LOG_LEVEL", "value": "info" },
+        { "name": "DB_CONNECTION", "value": "mysql" },
+        { "name": "DB_HOST", "value": "<RDS_ENDPOINT>" },
+        { "name": "DB_PORT", "value": "3306" },
+        { "name": "DB_DATABASE", "value": "garment_defect" },
+        { "name": "DB_USERNAME", "value": "garment" },
+        { "name": "CACHE_STORE", "value": "database" },
+        { "name": "SESSION_DRIVER", "value": "database" },
+        { "name": "QUEUE_CONNECTION", "value": "database" },
+        { "name": "FILESYSTEM_DISK", "value": "s3" },
+        { "name": "INSPECTION_IMAGE_DISK", "value": "s3" },
+        { "name": "AWS_DEFAULT_REGION", "value": "<REGION>" },
+        { "name": "AWS_BUCKET", "value": "<INSPECTION_BUCKET>" },
+        { "name": "ADMIN_EMAIL", "value": "<ADMIN_EMAIL>" },
+        { "name": "RUN_MIGRATIONS", "value": "false" },
+        { "name": "RUN_SEED", "value": "false" },
+        { "name": "WAIT_FOR_DB", "value": "true" },
+        { "name": "DB_WAIT_ATTEMPTS", "value": "30" },
+        { "name": "OPTIMIZE", "value": "true" }
+      ],
+      "secrets": [
+        {
+          "name": "APP_KEY",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:garment-defect/app-key"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:garment-defect/db-password"
+        },
+        {
+          "name": "ADMIN_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:garment-defect/admin-password"
+        },
+        {
+          "name": "OPERATOR_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:garment-defect/operator-password"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl --fail --silent --show-error http://127.0.0.1/up || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/garment-defect",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "app"
+        }
+      },
+      "stopTimeout": 30
+    }
+  ]
+}

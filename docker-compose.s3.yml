@@ -1,0 +1,56 @@
+name: garment-defect
+
+# S3-compatible storage overlay for the local stack.
+#
+#   docker compose --env-file .env.docker \
+#     -f docker-compose.yml -f docker-compose.s3.yml up --build
+#
+# Set these in .env.docker:
+#   FILESYSTEM_DISK=s3
+#   INSPECTION_IMAGE_DISK=s3
+#   AWS_BUCKET=garment-inspection-images
+#   AWS_ENDPOINT=http://minio:9000
+#   AWS_USE_PATH_STYLE_ENDPOINT=true
+#   MINIO_ROOT_USER=...
+#   MINIO_ROOT_PASSWORD=...
+
+services:
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env.docker}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env.docker}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env.docker}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env.docker}
+      AWS_BUCKET: ${AWS_BUCKET:-garment-inspection-images}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing "local/$$AWS_BUCKET"
+        mc anonymous set none "local/$$AWS_BUCKET"
+        echo "MinIO bucket $$AWS_BUCKET is ready."
+
+volumes:
+  minio-data:

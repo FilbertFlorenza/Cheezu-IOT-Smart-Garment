@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    [x-cloak] {
+        display: none !important;
+    }
+
+    html {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    ::selection {
+        @apply bg-blue-600/20 text-slate-900;
+    }
+}
+
+@layer components {
+    .chart-frame {
+        position: relative;
+        height: 18rem;
+        width: 100%;
+    }
+
+    .data-table {
+        @apply min-w-full divide-y divide-slate-200 text-sm;
+    }
+
+    .data-table thead th {
+        @apply bg-slate-50 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+    }
+
+    .data-table tbody {
+        @apply divide-y divide-slate-100 bg-white;
+    }
+
+    .data-table tbody td {
+        @apply whitespace-nowrap px-4 py-3 text-slate-600;
+    }
+
+    .data-table tbody tr {
+        @apply transition hover:bg-slate-50/80;
+    }
+
+    .panel {
+        @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    }
+
+    .form-input {
+        @apply block w-full rounded-lg border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500;
+    }
+
+    .form-label {
+        @apply mb-1.5 block text-sm font-medium text-slate-700;
+    }
+}

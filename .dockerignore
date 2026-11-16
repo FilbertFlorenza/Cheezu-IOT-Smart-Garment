@@ -1,0 +1,42 @@
+# Source control and editor metadata
+.git
+.gitignore
+.gitattributes
+.github
+.idea
+.vscode
+
+# Local environment files (never bake secrets into an image)
+.env
+.env.*
+!.env.example
+
+# Installed dependencies and build output (restored inside the build stages)
+vendor
+node_modules
+public/build
+public/hot
+public/storage
+storage/app/*
+!storage/app/public
+storage/app/public/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+bootstrap/cache/*.php
+
+# Tests, tooling and documentation are not needed at runtime
+tests
+phpunit.xml
+docs
+*.md
+!README.md
+docker-compose.yml
+docker-compose.*.yml
+
+# Local databases and artefacts
+*.sqlite
+*.sqlite-journal
+.DS_Store
+Thumbs.db
