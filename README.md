@@ -13,8 +13,9 @@ does **not** run defect-detection inference itself.
 - **Delivery** — Docker image (Nginx + PHP-FPM + Supervisor), GitHub Actions CI,
   ECS/Fargate deployment template
 
-> **Working on the code?** AI coding agents should start with
-> [`AGENTS.md`](AGENTS.md) and the structured documentation in
+> **New here?** Start with [`docs/README.md`](docs/README.md) — the human handbook. It explains what
+> the system does, gets you running in about 15 minutes, and links to one page per topic. AI coding
+> agents should start with [`AGENTS.md`](AGENTS.md) and the specification in
 > [`ai-docs/`](ai-docs/01-project-overview.md).
 
 ## Features
@@ -130,12 +131,46 @@ php artisan view:cache     # Compile every Blade template
 The test suite uses a separate MySQL database (`garment_defect_test`) configured
 in `phpunit.xml`.
 
-## Documentation
+## Where to look
 
-**New to the project or working with an AI agent?** Start with
-[`AGENTS.md`](AGENTS.md) and [`ai-docs/01-project-overview.md`](ai-docs/01-project-overview.md).
+This repository carries two documentation sets. They are deliberately separate:
 
-### AI-oriented documentation (`ai-docs/`)
+- **[`docs/`](docs/README.md)** is the **human handbook**. Narrative, walkthroughs, diagrams,
+  checkpoints, and troubleshooting. Start here.
+- **[`ai-docs/`](ai-docs/01-project-overview.md)** is the **specification**. Exact classes, columns,
+  invariants, and configuration. It is the canonical reference for implementation detail.
+
+When the two disagree, the code wins; update both when behaviour changes.
+
+### I want to…
+
+| Task | Read this first |
+| --- | --- |
+| Understand what the system does | [`docs/README.md`](docs/README.md) → [`docs/architecture.md`](docs/architecture.md) |
+| Run it locally | [`docs/local-setup.md`](docs/local-setup.md) |
+| Change backend code | [`docs/architecture.md`](docs/architecture.md) → [`docs/database.md`](docs/database.md) → [`docs/api.md`](docs/api.md) |
+| Build an inference or forecasting producer | [`docs/integration-contracts.md`](docs/integration-contracts.md) → [`docs/api.md`](docs/api.md) |
+| Configure the environment | [`docs/environment.md`](docs/environment.md) |
+| Ship it | [`docs/deployment.md`](docs/deployment.md) → [`docs/aws-oidc.md`](docs/aws-oidc.md) |
+| Fix an error | [`docs/troubleshooting.md`](docs/troubleshooting.md) |
+| Have an AI agent work on it | [`AGENTS.md`](AGENTS.md) → [`ai-docs/17-ai-agent-guide.md`](ai-docs/17-ai-agent-guide.md) |
+
+### Human handbook (`docs/`)
+
+| Page | What it answers |
+| --- | --- |
+| [`docs/README.md`](docs/README.md) | Orientation, glossary, reading paths, five-minute overview |
+| [`docs/architecture.md`](docs/architecture.md) | Components, request lifecycle, ingestion and forecast flows, non-goals |
+| [`docs/local-setup.md`](docs/local-setup.md) | Install, configure, migrate, seed, run, verify, reset |
+| [`docs/database.md`](docs/database.md) | Tables, relationships, integrity rules, reporting queries |
+| [`docs/api.md`](docs/api.md) | Authentication, envelopes, every endpoint, error codes |
+| [`docs/integration-contracts.md`](docs/integration-contracts.md) | Producer obligations, retry policy, recipes, acceptance checklist |
+| [`docs/environment.md`](docs/environment.md) | Which variables matter, defaults, secrets, config caching |
+| [`docs/deployment.md`](docs/deployment.md) | Image, Compose, ECS/Fargate, migrations, rollback, operations |
+| [`docs/aws-oidc.md`](docs/aws-oidc.md) | GitHub Actions → AWS role, trust policy, repository settings |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Symptom → cause → fix index across every area |
+
+### Specification (`ai-docs/`)
 
 These are the canonical, implementation-verified documents organised as a 01–17 set.
 
@@ -158,21 +193,6 @@ These are the canonical, implementation-verified documents organised as a 01–1
 | [`ai-docs/15-development-guide.md`](ai-docs/15-development-guide.md) | Setup, common tasks, debugging |
 | [`ai-docs/16-known-limitations-and-technical-debt.md`](ai-docs/16-known-limitations-and-technical-debt.md) | Gaps, unused code, risks |
 | [`ai-docs/17-ai-agent-guide.md`](ai-docs/17-ai-agent-guide.md) | Task routing, invariants, verification checklist |
-
-### Original deep dives (`docs/`)
-
-Preserved unchanged. Prefer these for exhaustive examples and provisioning walkthroughs.
-
-| Document | Contents |
-| --- | --- |
-| [`docs/architecture.md`](docs/architecture.md) | Components, request flows, layering, security decisions |
-| [`docs/database.md`](docs/database.md) | Schema, relationships, indexes, enums, retention |
-| [`docs/api.md`](docs/api.md) | Endpoints, authentication, envelopes, errors, examples |
-| [`docs/integration-contracts.md`](docs/integration-contracts.md) | Exact contracts for inference and forecasting teams |
-| [`docs/local-setup.md`](docs/local-setup.md) | Prerequisites, installation, seeding, troubleshooting |
-| [`docs/environment.md`](docs/environment.md) | Every environment variable and secret-handling rules |
-| [`docs/deployment.md`](docs/deployment.md) | Docker, CI/CD, AWS ECS/Fargate, RDS, S3, migrations |
-| [`docs/aws-oidc.md`](docs/aws-oidc.md) | GitHub Actions OIDC role and deployment variables |
 
 ## Security notes
 

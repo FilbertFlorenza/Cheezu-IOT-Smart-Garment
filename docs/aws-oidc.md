@@ -1,11 +1,60 @@
 # GitHub Actions → AWS with OIDC
 
-The deploy workflow assumes an IAM role through GitHub's OpenID Connect provider.
-No long-lived AWS access keys are stored in GitHub.
+> Let the deploy workflow assume an IAM role without storing any long-lived AWS access key in GitHub.
+> GitHub signs a short-lived identity token, AWS verifies it, and the workflow receives temporary
+> credentials scoped to one role.
 
-## 1. Create the OIDC provider
+**Who this is for:** whoever configures CI/CD for the repository.
+**What you'll learn:** how the trust works, the exact provider, role, trust policy, permission policy,
+and repository settings, and how to verify or revoke it.
+**Important:** this is a **template**. No AWS account was configured from this repository. Treat every
+command as a one-time setup step to run in an approved account, and verify the outcome yourself.
 
-Once per AWS account:
+---
+
+## The short version
+
+1. **One OIDC provider per AWS account** for `token.actions.githubusercontent.com`.
+2. **One role**, `garment-defect-deploy`, trusted only for `repo:ORG/REPO:environment:production`.
+3. **One GitHub secret**, `AWS_DEPLOY_ROLE_ARN`, and **five required variables** (`AWS_REGION`,
+   `ECR_REPOSITORY`, `ECS_CLUSTER`, `ECS_SERVICE`, `ECS_TASK_FAMILY`).
+4. **No access keys.** The workflow requests `id-token: write` and exchanges it for temporary
+   credentials.
+5. **Revoke by editing the trust policy** or deleting the role — there is no key to rotate.
+
+## How it works
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant GH as GitHub Actions job
+    participant OIDC as GitHub OIDC provider
+    participant STS as AWS STS
+    participant AWS as ECR / ECS / IAM
+
+    GH->>OIDC: request identity token (aud=sts.amazonaws.com, sub=repo:ORG/REPO:environment:production)
+    OIDC-->>GH: signed JWT
+    GH->>STS: AssumeRoleWithWebIdentity(role, JWT)
+    STS->>STS: verify signature, issuer, audience, subject
+    STS-->>GH: temporary credentials (15 min – 1 h)
+    GH->>AWS: push image, register task definition, run migration, update service
+```
+
+Three claims decide whether the exchange succeeds:
+
+| Claim | Expected value | Why |
+| --- | --- | --- |
+| `aud` | `sts.amazonaws.com` | The token is meant for AWS |
+| `sub` | `repo:ORG/REPO:environment:production` | Only this repository, only the `production` environment |
+| `iss` | `https://token.actions.githubusercontent.com` | The provider URL must match exactly |
+
+The deploy job declares `environment: production`, which is why the subject carries the environment
+segment. A pull request or a tag job without that environment produces a different `sub` and is
+rejected. That is the point: the role cannot be assumed from an arbitrary branch.
+
+## Step by step
+
+### 1. Create the OIDC provider (once per account)
 
 ```bash
 aws iam create-open-id-connect-provider \
@@ -14,14 +63,16 @@ aws iam create-open-id-connect-provider \
   --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1
 ```
 
-If AWS rejects the thumbprint (the value can change), create the provider in the
-IAM console with **Provider URL** `https://token.actions.githubusercontent.com`
-and **Audience** `sts.amazonaws.com`. AWS now validates GitHub's certificate
-chain and may not require a thumbprint.
+If AWS rejects the thumbprint — it can change, and some partitions no longer require one — create the
+provider in the IAM console with **Provider URL** `https://token.actions.githubusercontent.com` and
+**Audience** `sts.amazonaws.com`, and leave the thumbprint empty.
 
-## 2. Create the deploy role
+**Checkpoint:** `aws iam list-open-id-connect-providers` shows the provider ARN ending in
+`oidc-provider/token.actions.githubusercontent.com`.
 
-Trust policy — replace `ORG/REPO` with the GitHub repository:
+### 2. Write the trust policy
+
+Save as `trust-policy.json`, replacing `ORG/REPO` and `<ACCOUNT_ID>`:
 
 ```json
 {
@@ -44,26 +95,24 @@ Trust policy — replace `ORG/REPO` with the GitHub repository:
 }
 ```
 
-The workflow's deploy job declares `environment: production`, so the subject is
-the environment claim. This prevents a pull request from another branch from
-assuming the role.
+Do **not** loosen `sub` to a wildcard such as `repo:ORG/REPO:*` unless you accept that any branch can
+deploy to production. If you do need tag- or branch-scoped deploys, use an explicit `StringLike` with a
+narrow pattern and separate roles per environment.
 
-Create the role:
+### 3. Create the role
 
 ```bash
 aws iam create-role \
   --role-name garment-defect-deploy \
   --assume-role-policy-document file://trust-policy.json
-
-aws iam attach-role-policy \
-  --role-name garment-defect-deploy \
-  --policy-arn arn:aws:iam::aws:policy/...   # or use an inline policy below
 ```
 
-### Permission policy
+**Checkpoint:** the command returns an ARN. Put that value in GitHub as `AWS_DEPLOY_ROLE_ARN` (step 5).
 
-Attach an inline policy (replace account, region, repository name, and role
-names):
+### 4. Attach the permission policy
+
+The role needs to push an image, register a task revision, run a one-off migration task, update the
+service, read deploy logs, and pass the two container roles to ECS.
 
 ```json
 {
@@ -132,31 +181,47 @@ names):
 }
 ```
 
-`ecs:RegisterTaskDefinition` requires `iam:PassRole` for the execution and task
-roles, hence the condition above. Keep the resource scope as tight as your
-account structure allows.
+Save as `deploy-policy.json` and attach it:
 
-## 3. Configure GitHub repository settings
+```bash
+aws iam put-role-policy \
+  --role-name garment-defect-deploy \
+  --policy-name garment-defect-deploy \
+  --policy-document file://deploy-policy.json
+```
 
-### Secret
+Why `iam:PassRole` is required: registering a task definition that references the execution and task
+roles is an implicit pass of those roles. The condition limits the pass to ECS tasks. The two container
+roles themselves are described in [deployment.md](deployment.md#3-container-roles).
 
-| Name | Value |
-| --- | --- |
-| `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::<ACCOUNT_ID>:role/garment-defect-deploy` |
+`ecs:RunTask` and `ecs:DescribeTasks` are used by the one-off migration step. If you never set the
+subnet and security-group variables, that step is skipped and those actions are unused — but leaving
+them in keeps the two deployment modes consistent.
 
-### Variables
+### 5. Configure the GitHub repository
 
-| Name | Example | Required |
+Create a **production** environment under **Settings → Environments**, with required reviewers if
+deployments need approval. The workflow's subject claim depends on that environment name.
+
+Add one secret:
+
+| Kind | Name | Value |
+| --- | --- | --- |
+| Secret | `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::<ACCOUNT_ID>:role/garment-defect-deploy` |
+
+Add the variables the workflow validates:
+
+| Variable | Example | Required |
 | --- | --- | --- |
 | `AWS_REGION` | `ap-southeast-1` | yes |
 | `ECR_REPOSITORY` | `garment-defect` | yes |
 | `ECS_CLUSTER` | `garment-defect` | yes |
 | `ECS_SERVICE` | `garment-defect` | yes |
 | `ECS_TASK_FAMILY` | `garment-defect` | yes |
-| `ECS_SUBNET_IDS` | `subnet-aaaa,subnet-bbbb` | optional, enables automatic migrations |
-| `ECS_SECURITY_GROUP_IDS` | `sg-cccc` | optional, enables automatic migrations |
+| `ECS_SUBNET_IDS` | `subnet-aaaa,subnet-bbbb` | optional; enables automatic migrations |
+| `ECS_SECURITY_GROUP_IDS` | `sg-cccc` | optional; enables automatic migrations |
 
-Set them with the CLI:
+With the GitHub CLI:
 
 ```bash
 gh variable set AWS_REGION --body "ap-southeast-1"
@@ -169,58 +234,94 @@ gh secret set AWS_DEPLOY_ROLE_ARN \
   --body "arn:aws:iam::<ACCOUNT_ID>:role/garment-defect-deploy"
 ```
 
-Also create a **production** environment in the repository and add required
-reviewers if deployments need approval.
+The workflow fails fast with an `::error::` annotation if any required variable or the secret is
+missing, before it attempts to assume the role.
 
-## 4. What the workflow does
-
-`.github/workflows/deploy.yml`:
-
-1. validates the required repository variables and secret;
-2. assumes the role with `aws-actions/configure-aws-credentials` using OIDC;
-3. logs in to ECR and builds/pushes the image tagged with the commit SHA (or the
-   manual input) plus `latest`;
-4. downloads the current task definition, replaces the image, strips read-only
-   fields, and registers a new revision;
-5. optionally runs `php artisan migrate --force` as a one-off Fargate task using
-   the new revision;
-6. updates the ECS service and waits for `services-stable`;
-7. writes a summary with the image URI and task definition ARN.
-
-The job requires `permissions: id-token: write`; the workflow already declares it.
-
-## 5. Verify before the first deploy
+### 6. Verify
 
 ```bash
-# Confirm GitHub can assume the role (run the workflow manually).
 gh workflow run deploy.yml
-
-# Inspect the run.
 gh run list --workflow deploy.yml
 gh run watch
 ```
 
-If the workflow fails at credential configuration, inspect the error:
+**Checkpoint:** the run gets past "Configure AWS credentials (OIDC)" and reports a role ARN in the
+credentials step. If you only want to test the trust, temporarily dispatch the workflow with an
+`image_tag` that exists, or run a throwaway job that calls `aws sts get-caller-identity`.
 
-| Error | Cause |
+## Reference
+
+### What the workflow does
+
+`.github/workflows/deploy.yml`:
+
+1. validates the required variables and the `AWS_DEPLOY_ROLE_ARN` secret;
+2. assumes the role through `aws-actions/configure-aws-credentials` using OIDC;
+3. logs in to ECR and builds/pushes the image tagged with the commit SHA (or the manual input) plus
+   `latest`;
+4. downloads the current task definition, replaces the image, strips read-only fields, and registers a
+   new revision;
+5. runs `php artisan migrate --force` as a one-off Fargate task, when the subnet and security-group
+   variables are set;
+6. updates the service with `--force-new-deployment` and waits for `services-stable`;
+7. writes a summary with the image URI and task definition ARN.
+
+The job declares `permissions: id-token: write` and `contents: read`. Without `id-token: write` the
+OIDC exchange cannot happen.
+
+### Subject claim variants
+
+| Workflow context | `sub` |
 | --- | --- |
-| `Not authorized to perform sts:AssumeRoleWithWebIdentity` | Trust policy subject or audience mismatch |
-| `No OpenID Connect provider found` | Provider URL differs from `token.actions.githubusercontent.com` |
-| `AccessDenied` on ECR push | Repository ARN in the policy is wrong, or the image name differs |
-| `AccessDenied` on `iam:PassRole` | Execution/task role ARNs are wrong or the condition blocks the call |
-| `ResourceNotFoundException` on ECS | Cluster, service, or task family variables are wrong |
+| Job with `environment: production` (this workflow) | `repo:ORG/REPO:environment:production` |
+| Job on `main` without an environment | `repo:ORG/REPO:ref:refs/heads/main` |
+| Pull request | `repo:ORG/REPO:pull_request` |
+| Tag push without an environment | `repo:ORG/REPO:ref:refs/tags/v1.0.0` |
 
-## 6. Fallback (not recommended)
+If you change the environment name, the job's environment, or the repository name, update the trust
+policy at the same time. This is the most common cause of a sudden `AccessDenied`.
 
-If OIDC is not available, the workflow could use an IAM user access key stored as
-a GitHub secret. That creates a long-lived credential that must be rotated and
-audited. Prefer OIDC; use static keys only as a temporary, documented exception.
+### Verification and rotation
 
-## 7. Rotation and offboarding
-
-- The role has no long-lived credential to rotate.
-- To revoke GitHub access, delete the role or remove the repository/org from the
-  trust policy condition.
-- Removing the GitHub environment or renaming the repository changes the subject
-  claim; update the trust policy at the same time.
+- The role has no long-lived credential, so there is nothing to rotate.
+- To revoke GitHub's access, delete the role or remove the repository/org from the trust policy.
 - Review the role's CloudTrail activity periodically.
+- Rotate the container's own secrets separately; they live in Secrets Manager, not here.
+
+### Cleanup order
+
+1. Remove the `AWS_DEPLOY_ROLE_ARN` secret and the deployment variables.
+2. Delete the `garment-defect-deploy` role and its inline policy.
+3. Delete the OIDC provider if no other role in the account uses it.
+4. Revoke producer tokens from the application, then tear down ECS, RDS, S3, and ECR.
+
+Deleting the OIDC provider first breaks every workflow that depends on it, including unrelated
+repositories in the same account. Check first.
+
+## Common problems
+
+| Error | Cause | Fix |
+| --- | --- | --- |
+| `Not authorized to perform sts:AssumeRoleWithWebIdentity` | `sub` or `aud` mismatch | Match the exact `repo:ORG/REPO:environment:production` and `sts.amazonaws.com` |
+| `No OpenID Connect provider found` | Provider URL differs, or the provider is in another account | Create it in this account with the exact URL |
+| `Credentials could not be loaded` / `id-token` error | Workflow lacks `permissions: id-token: write` | Add the permission at job or workflow level |
+| `AccessDenied` on ECR push | Repository ARN mismatch or wrong image name | Fix `<REGION>`/`<ACCOUNT_ID>`/repository in the policy |
+| `AccessDenied` on `iam:PassRole` | Execution or task role ARN wrong, or the condition blocks it | Correct the ARNs; keep `iam:PassedToService` |
+| `ResourceNotFoundException` on ECS | `ECS_CLUSTER`, `ECS_SERVICE`, or `ECS_TASK_FAMILY` wrong | Fix the repository variables |
+| Workflow fails at "Validate deployment configuration" | A required variable or the secret is unset | Set all five variables and `AWS_DEPLOY_ROLE_ARN` |
+| Migration step skipped | `ECS_SUBNET_IDS` or `ECS_SECURITY_GROUP_IDS` empty | Set both, or run migrations manually |
+
+Deployment-side symptoms are in [deployment.md](deployment.md#common-problems) and
+[troubleshooting.md](troubleshooting.md).
+
+## Fallback: static keys (not recommended)
+
+An IAM user access key stored as a GitHub secret would also work, but it creates a long-lived
+credential that must be rotated, audited, and can be exfiltrated from a compromised workflow. Use it
+only as a temporary, documented exception, and remove it once OIDC works.
+
+## Related
+
+- Image, ECS service, and migration runbook: [deployment.md](deployment.md)
+- Variables the container needs: [environment.md](environment.md)
+- Implementation-level CI/CD detail: [`../ai-docs/14-deployment-and-infrastructure.md`](../ai-docs/14-deployment-and-infrastructure.md)
