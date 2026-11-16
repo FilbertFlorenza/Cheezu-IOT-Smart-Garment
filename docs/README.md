@@ -1,6 +1,6 @@
 # Documentation
 
-> This folder is the **human handbook** for the Smart Garment Defect Detection backend. It explains
+> This folder is the documentation for the Smart Garment Defect Detection backend. It explains
 > what the system does, how to run it, how its parts fit together, and what to do when something
 > breaks. Start here, then follow the path that matches what you need to do.
 

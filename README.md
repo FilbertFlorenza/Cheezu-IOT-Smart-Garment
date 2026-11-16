@@ -13,7 +13,7 @@ does **not** run defect-detection inference itself.
 - **Delivery** — Docker image (Nginx + PHP-FPM + Supervisor), GitHub Actions CI,
   ECS/Fargate deployment template
 
-> **New here?** Start with [`docs/README.md`](docs/README.md) — the human handbook. It explains what
+> **New here?** Start with [`docs/README.md`](docs/README.md) — It explains what
 > the system does, gets you running in about 15 minutes, and links to one page per topic. AI coding
 > agents should start with [`AGENTS.md`](AGENTS.md) and the specification in
 > [`ai-docs/`](ai-docs/01-project-overview.md).
