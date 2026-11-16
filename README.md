@@ -131,77 +131,65 @@ php artisan view:cache     # Compile every Blade template
 The test suite uses a separate MySQL database (`garment_defect_test`) configured
 in `phpunit.xml`.
 
-## Where to look
+## Documentation
 
-This repository carries two documentation sets. They are deliberately separate:
+This project has two sets of documentation, each with a different purpose.
 
-- **[`docs/`](docs/README.md)** is the **human handbook**. Narrative, walkthroughs, diagrams,
-  checkpoints, and troubleshooting. Start here.
-- **[`ai-docs/`](ai-docs/01-project-overview.md)** is the **specification**. Exact classes, columns,
-  invariants, and configuration. It is the canonical reference for implementation detail.
+- **[`docs/`](docs/README.md)** contains the documentation for developers. It covers how the system works, how to set it up, how to use its APIs, and how to maintain or extend the application.
+- **[`ai-docs/`](ai-docs/01-project-overview.md)** contains more detailed technical references, including classes, database structures, configurations, and implementation details.
 
-When the two disagree, the code wins; update both when behaviour changes.
+If something in the documentation doesn't match the actual code, always follow the code and update the documentation when necessary.
 
-### I want to…
+### Where to start
 
-| Task | Read this first |
-| --- | --- |
-| Understand what the system does | [`docs/README.md`](docs/README.md) → [`docs/architecture.md`](docs/architecture.md) |
-| Run it locally | [`docs/local-setup.md`](docs/local-setup.md) |
-| Change backend code | [`docs/architecture.md`](docs/architecture.md) → [`docs/database.md`](docs/database.md) → [`docs/api.md`](docs/api.md) |
-| Build an inference or forecasting producer | [`docs/integration-contracts.md`](docs/integration-contracts.md) → [`docs/api.md`](docs/api.md) |
-| Configure the environment | [`docs/environment.md`](docs/environment.md) |
-| Ship it | [`docs/deployment.md`](docs/deployment.md) → [`docs/aws-oidc.md`](docs/aws-oidc.md) |
-| Fix an error | [`docs/troubleshooting.md`](docs/troubleshooting.md) |
-| Have an AI agent work on it | [`AGENTS.md`](AGENTS.md) → [`ai-docs/17-ai-agent-guide.md`](ai-docs/17-ai-agent-guide.md) |
+| If you want to... | Start here |
+|---|---|
+| Understand the project | [`docs/README.md`](docs/README.md) → [`docs/architecture.md`](docs/architecture.md) |
+| Run the project locally | [`docs/local-setup.md`](docs/local-setup.md) |
+| Work on the backend | [`docs/architecture.md`](docs/architecture.md) → [`docs/database.md`](docs/database.md) → [`docs/api.md`](docs/api.md) |
+| Build an AI inference or forecasting service | [`docs/integration-contracts.md`](docs/integration-contracts.md) → [`docs/api.md`](docs/api.md) |
+| Configure environment variables | [`docs/environment.md`](docs/environment.md) |
+| Deploy the application | [`docs/deployment.md`](docs/deployment.md) → [`docs/aws-oidc.md`](docs/aws-oidc.md) |
+| Troubleshoot an issue | [`docs/troubleshooting.md`](docs/troubleshooting.md) |
+| Work on the project using an AI agent | [`AGENTS.md`](AGENTS.md) → [`ai-docs/17-ai-agent-guide.md`](ai-docs/17-ai-agent-guide.md) |
 
-### Human handbook (`docs/`)
+### Developer documentation (`docs/`)
 
-| Page | What it answers |
-| --- | --- |
-| [`docs/README.md`](docs/README.md) | Orientation, glossary, reading paths, five-minute overview |
-| [`docs/architecture.md`](docs/architecture.md) | Components, request lifecycle, ingestion and forecast flows, non-goals |
-| [`docs/local-setup.md`](docs/local-setup.md) | Install, configure, migrate, seed, run, verify, reset |
-| [`docs/database.md`](docs/database.md) | Tables, relationships, integrity rules, reporting queries |
-| [`docs/api.md`](docs/api.md) | Authentication, envelopes, every endpoint, error codes |
-| [`docs/integration-contracts.md`](docs/integration-contracts.md) | Producer obligations, retry policy, recipes, acceptance checklist |
-| [`docs/environment.md`](docs/environment.md) | Which variables matter, defaults, secrets, config caching |
-| [`docs/deployment.md`](docs/deployment.md) | Image, Compose, ECS/Fargate, migrations, rollback, operations |
-| [`docs/aws-oidc.md`](docs/aws-oidc.md) | GitHub Actions → AWS role, trust policy, repository settings |
-| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Symptom → cause → fix index across every area |
+This is the main documentation for anyone working on the project.
 
-### Specification (`ai-docs/`)
+| Document | Description |
+|---|---|
+| [`docs/README.md`](docs/README.md) | Project introduction, overview, glossary, and recommended reading order |
+| [`docs/architecture.md`](docs/architecture.md) | System components, request flow, data flow, and overall architecture |
+| [`docs/local-setup.md`](docs/local-setup.md) | How to install, configure, run, and reset the project locally |
+| [`docs/database.md`](docs/database.md) | Database tables, relationships, constraints, and useful queries |
+| [`docs/api.md`](docs/api.md) | API endpoints, authentication, request and response formats, and error codes |
+| [`docs/integration-contracts.md`](docs/integration-contracts.md) | How AI inference and forecasting services communicate with the backend |
+| [`docs/environment.md`](docs/environment.md) | Environment variables, configuration, and secret management |
+| [`docs/deployment.md`](docs/deployment.md) | Docker, AWS ECS/Fargate, deployment steps, migrations, and rollback |
+| [`docs/aws-oidc.md`](docs/aws-oidc.md) | GitHub Actions and AWS authentication using OIDC |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Common issues, possible causes, and solutions |
 
-These are the canonical, implementation-verified documents organised as a 01–17 set.
+### Technical references (`ai-docs/`)
 
-| Document | Contents |
-| --- | --- |
-| [`ai-docs/01-project-overview.md`](ai-docs/01-project-overview.md) | Purpose, users, features, implementation status |
-| [`ai-docs/02-technology-stack.md`](ai-docs/02-technology-stack.md) | Versions, PHP/npm dependencies, runtime tooling |
-| [`ai-docs/03-system-architecture.md`](ai-docs/03-system-architecture.md) | Diagrams, layers, request lifecycle, data flow |
-| [`ai-docs/04-project-structure.md`](ai-docs/04-project-structure.md) | Directory map and extension points |
-| [`ai-docs/05-database-design.md`](ai-docs/05-database-design.md) | ERD, tables, indexes, constraints, enumerations |
-| [`ai-docs/06-backend-architecture.md`](ai-docs/06-backend-architecture.md) | Controllers, services, DTOs, resources, middleware |
-| [`ai-docs/07-api-documentation.md`](ai-docs/07-api-documentation.md) | Endpoints, envelopes, errors, rate limits, examples |
-| [`ai-docs/08-frontend-documentation.md`](ai-docs/08-frontend-documentation.md) | Blade, Tailwind, Alpine, Chart.js, page inventory |
-| [`ai-docs/09-business-logic-and-workflows.md`](ai-docs/09-business-logic-and-workflows.md) | Ingestion, forecasts, dashboard, role rules |
-| [`ai-docs/10-authentication-and-authorization.md`](ai-docs/10-authentication-and-authorization.md) | Session auth, tokens, abilities, policies |
-| [`ai-docs/11-file-storage-and-media.md`](ai-docs/11-file-storage-and-media.md) | Private images, local/S3 disks, signed URLs |
-| [`ai-docs/12-configuration-and-environment.md`](ai-docs/12-configuration-and-environment.md) | Every environment variable and secret rule |
-| [`ai-docs/13-testing-and-quality.md`](ai-docs/13-testing-and-quality.md) | Pest suite, helpers, coverage, CI checks |
-| [`ai-docs/14-deployment-and-infrastructure.md`](ai-docs/14-deployment-and-infrastructure.md) | Docker, Compose, CI/CD, ECS/Fargate |
-| [`ai-docs/15-development-guide.md`](ai-docs/15-development-guide.md) | Setup, common tasks, debugging |
-| [`ai-docs/16-known-limitations-and-technical-debt.md`](ai-docs/16-known-limitations-and-technical-debt.md) | Gaps, unused code, risks |
-| [`ai-docs/17-ai-agent-guide.md`](ai-docs/17-ai-agent-guide.md) | Task routing, invariants, verification checklist |
+These documents contain more detailed technical information about the implementation. They are mainly intended as a reference when working on specific parts of the codebase.
 
-## Security notes
-
-- No public registration route; accounts are created by an administrator.
-- Role checks are enforced by middleware and policies, not only hidden in the UI.
-- Machine clients use Sanctum tokens with least-privilege abilities.
-- Inspection images are private and served through expiring signed URLs or an
-  authenticated UI route.
-- Duplicate inspection and forecast IDs are rejected with HTTP 409 rather than
-  overwriting stored evidence.
-- Secrets are injected at runtime. No credential is committed to the repository
-  or baked into the container image.
+| Document | Description |
+|---|---|
+| [`01-project-overview.md`](ai-docs/01-project-overview.md) | Project purpose, users, features, and implementation status |
+| [`02-technology-stack.md`](ai-docs/02-technology-stack.md) | Technology versions, dependencies, and development tools |
+| [`03-system-architecture.md`](ai-docs/03-system-architecture.md) | Architecture diagrams, application layers, request flow, and data flow |
+| [`04-project-structure.md`](ai-docs/04-project-structure.md) | Directory structure and important files |
+| [`05-database-design.md`](ai-docs/05-database-design.md) | Database tables, relationships, indexes, and constraints |
+| [`06-backend-architecture.md`](ai-docs/06-backend-architecture.md) | Controllers, services, DTOs, API resources, and middleware |
+| [`07-api-documentation.md`](ai-docs/07-api-documentation.md) | API endpoints, response formats, error handling, and examples |
+| [`08-frontend-documentation.md`](ai-docs/08-frontend-documentation.md) | Blade, Tailwind, Alpine.js, Chart.js, and frontend pages |
+| [`09-business-logic-and-workflows.md`](ai-docs/09-business-logic-and-workflows.md) | Inspection processing, forecasting, dashboard logic, and user roles |
+| [`10-authentication-and-authorization.md`](ai-docs/10-authentication-and-authorization.md) | Authentication, tokens, permissions, and policies |
+| [`11-file-storage-and-media.md`](ai-docs/11-file-storage-and-media.md) | Image uploads, private storage, local storage, and S3 |
+| [`12-configuration-and-environment.md`](ai-docs/12-configuration-and-environment.md) | Environment variables, application settings, and secrets |
+| [`13-testing-and-quality.md`](ai-docs/13-testing-and-quality.md) | Tests, testing helpers, code quality, and CI checks |
+| [`14-deployment-and-infrastructure.md`](ai-docs/14-deployment-and-infrastructure.md) | Docker, CI/CD, AWS ECS/Fargate, and infrastructure |
+| [`15-development-guide.md`](ai-docs/15-development-guide.md) | Local setup, common development tasks, and debugging |
+| [`16-known-limitations-and-technical-debt.md`](ai-docs/16-known-limitations-and-technical-debt.md) | Known issues, incomplete features, and technical debt |
+| [`17-ai-agent-guide.md`](ai-docs/17-ai-agent-guide.md) | Project context and guidelines for AI coding agents |
